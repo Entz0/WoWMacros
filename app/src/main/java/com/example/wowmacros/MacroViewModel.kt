@@ -62,4 +62,37 @@ class MacroViewModel : ViewModel() {
             state.copy(macros = state.macros.filter { it.id != macroId })
         }
     }
+
+    // Öppnar redigeringsdialogen för valt makro
+    fun startEditing(macro: WowMacro) {
+        _uiState.update { it.copy(editingMacro = macro) }
+    }
+
+    fun cancelEditing() {
+        _uiState.update { it.copy(editingMacro = null) }
+    }
+
+    fun saveEditedMacro(name: String, category: String, macroCode: String) {
+        val target = _uiState.value.editingMacro ?: return
+
+        if (name.isBlank() || macroCode.isBlank() || macroCode.length > 255) return
+
+        _uiState.update { state ->
+            val updatedMacros = state.macros.map { macro ->
+                if (macro.id == target.id) {
+                    macro.copy(
+                        name = name.trim(),
+                        category = category.trim().ifBlank { "PvE" },
+                        macroCode = macroCode
+                    )
+                } else {
+                    macro
+                }
+            }
+            state.copy(
+                macros = updatedMacros,
+                editingMacro = null
+            )
+        }
+    }
 }

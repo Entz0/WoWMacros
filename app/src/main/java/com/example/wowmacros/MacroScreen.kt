@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.material.icons.filled.Edit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,6 +116,7 @@ fun MacroScreen(viewModel: MacroViewModel = viewModel()) {
                         MacroItemCard(
                             macro = macro,
                             onToggleTested = { viewModel.toggleIsTested(macro.id) },
+                            onEdit = { viewModel.startEditing(macro) },
                             onDelete = { viewModel.deleteMacro(macro.id) }
                         )
                     }
@@ -122,12 +124,22 @@ fun MacroScreen(viewModel: MacroViewModel = viewModel()) {
             }
         }
     }
+    uiState.editingMacro?.let { macroToEdit ->
+        EditMacroDialog(
+            macro = macroToEdit,
+            onDismiss = { viewModel.cancelEditing() },
+            onSave = { name, category, code ->
+                viewModel.saveEditedMacro(name, category, code)
+            }
+        )
+    }
 }
 
 @Composable
 fun MacroItemCard(
     macro: WowMacro,
     onToggleTested: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -177,6 +189,14 @@ fun MacroItemCard(
                 )
             }
 
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Redigera makro",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
@@ -203,4 +223,73 @@ fun EmptyMacroState(modifier: Modifier = Modifier) {
             textAlign = TextAlign.Center
         )
     }
+}
+
+@Composable
+fun EditMacroDialog(
+    macro: WowMacro,
+    onDismiss: () -> Unit,
+    onSave: (name: String, category: String, code: String) -> Unit
+) {
+    var editedName by remember(macro.id) { mutableStateOf(macro.name) }
+    var editedCategory by remember(macro.id) { mutableStateOf(macro.category) }
+    var editedCode by remember(macro.id) { mutableStateOf(macro.macroCode) }
+
+    val isValid = editedName.isNotBlank() &&
+            editedCode.isNotBlank() &&
+            editedCode.length <= 255
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Redigera makro") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = editedName,
+                    onValueChange = { editedName = it },
+                    label = { Text("Makronamn") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = editedCategory,
+                    onValueChange = { editedCategory = it },
+                    label = { Text("Kategori") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = editedCode,
+                    onValueChange = { editedCode = it },
+                    label = { Text("Makrokod") },
+                    modifier = Modifier.fillMaxWidth(),
+                    supportingText = {
+                        val count = editedCode.length
+                        Text(
+                            text = "$count / 255",
+                            color = if (count > 255) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    },
+                    isError = editedCode.length > 255
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSave(editedName, editedCategory, editedCode) },
+                enabled = isValid
+            ) {
+                Text("Spara")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Avbryt")
+            }
+        }
+    )
 }
